@@ -3,7 +3,7 @@
 struct MyStruct {};
 
 template<>
-struct type_settings<int> : svh::scope {
+struct type_settings<int> : svh::scope_base {
 	int _min = 0;
 	int _max = 100;
 
@@ -15,7 +15,7 @@ struct type_settings<int> : svh::scope {
 };
 
 template<>
-struct type_settings<float> : svh::scope {
+struct type_settings<float> : svh::scope_base {
 	float _min = 0.0f;
 	float _max = 1.0f;
 	type_settings& min(const float& v) { _min = v; return *this; }
@@ -25,7 +25,7 @@ struct type_settings<float> : svh::scope {
 };
 
 int main() {
-	svh::scope root;
+	svh::scope_base root;
 	root.push<int>()
 		____.min(0)
 		____.max(50)

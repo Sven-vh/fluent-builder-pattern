@@ -32,19 +32,19 @@ namespace svh {
 	//	virtual ~scope_base() = default;
 	//};
 
-	struct scope : std::enable_shared_from_this<scope> {
+	struct scope_base : std::enable_shared_from_this<scope_base> {
 	private:
-		std::weak_ptr<scope> parent; /* Root level */
-		std::unordered_map<std::type_index, std::unique_ptr<scope>> children;
+		std::weak_ptr<scope_base> parent; /* Root level */
+		std::unordered_map<std::type_index, std::unique_ptr<scope_base>> children;
 
 		inline bool is_root() const { return parent.expired(); }
 		inline bool has_parent() const { return !parent.expired(); }
 
 	public:
-		virtual ~scope() = default; // Needed for dynamic_cast
-		scope() = default;
-		scope(const scope&) = delete;
-		scope& operator=(const scope&) = delete;
+		virtual ~scope_base() = default; // Needed for dynamic_cast
+		scope_base() = default;
+		scope_base(const scope_base&) = delete;
+		scope_base& operator=(const scope_base&) = delete;
 
 		template<class T>
 		type_settings<T>& push() {
@@ -73,11 +73,11 @@ namespace svh {
 			return ref;
 		}
 
-		scope& pop() {
+		scope_base& pop() {
 			if (!has_parent()) {
 				throw std::runtime_error("No parent to pop to");
 			}
-			auto* p = dynamic_cast<scope*>(parent.lock().get());
+			auto* p = dynamic_cast<scope_base*>(parent.lock().get());
 			if (!p) {
 				throw std::runtime_error("Parent has unexpected type");
 			}
@@ -102,7 +102,7 @@ namespace svh {
 
 			if (has_parent() && SVH_RECURSIVE_SEARCH) {
 				// Recurse to parent
-				auto* p = dynamic_cast<scope*>(parent.lock().get());
+				auto* p = dynamic_cast<scope_base*>(parent.lock().get());
 				if (!p) {
 					throw std::runtime_error("Parent has unexpected type");
 				}
@@ -113,10 +113,20 @@ namespace svh {
 		}
 	};
 
+	template<typename T>
+	struct scope : scope_base {
+		type_settings<T> settings;
+
+		void copy_settings_from(const scope_base& other) {
+			const type_settings<T>& other_settings = other.get<T>();
+			settings = other_settings; // Requires copy assignment
+		}
+	};
+
 } // namespace svh
 
 template<class T>
-struct type_settings : svh::scope {};
+struct type_settings : svh::scope_base {};
 
 /* Macros for indenting */
 #define ____
