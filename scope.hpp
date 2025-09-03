@@ -11,8 +11,14 @@
 #define SVH_AUTO_INSERT true
 #endif
 
+/* Whether to search parent scopes if not found in current scope*/
 #ifndef SVH_RECURSIVE_SEARCH
 #define SVH_RECURSIVE_SEARCH true
+#endif
+
+/* Whether to copy settings from parent scope when pushing a new scope*/
+#ifndef SVH_COPY_OVERRIDE
+#define SVH_COPY_OVERRIDE true
 #endif
 
 // Forward declare
@@ -22,31 +28,31 @@ struct type_settings;
 namespace svh {
 
 	// Polymorphic base for type-erasure
-	struct scope_base {
-		virtual ~scope_base() = default;
-	};
+	//struct scope_base {
+	//	virtual ~scope_base() = default;
+	//};
 
-	struct scope : scope_base {
+	struct scope : std::enable_shared_from_this<scope> {
 	private:
-		scope_base* parent = nullptr; /* Root level */
-		std::unordered_map<std::type_index, std::unique_ptr<scope_base>> children;
+		std::weak_ptr<scope> parent; /* Root level */
+		std::unordered_map<std::type_index, std::unique_ptr<scope>> children;
 
-		inline bool is_root() const { return parent == nullptr; }
-		inline bool has_parent() const { return parent != nullptr; }
+		inline bool is_root() const { return parent.expired(); }
+		inline bool has_parent() const { return !parent.expired(); }
 
 	public:
+		virtual ~scope() = default; // Needed for dynamic_cast
 		scope() = default;
 		scope(const scope&) = delete;
 		scope& operator=(const scope&) = delete;
-		scope(scope&&) = default;
-		scope& operator=(scope&&) = default;
 
 		template<class T>
 		type_settings<T>& push() {
 			const std::type_index key{ typeid(T) };
 
-			// Reuse if present
-			if (auto it = children.find(key); it != children.end()) {
+			/* Reuse if present */
+			auto it = children.find(key);
+			if (it != children.end()) {
 				auto* found = dynamic_cast<type_settings<T>*>(it->second.get());
 				if (!found) {
 					throw std::runtime_error("Existing child has unexpected type");
@@ -54,18 +60,24 @@ namespace svh {
 				return *found;
 			}
 
+			/* copy if found recursive */
+			if (has_parent() && SVH_COPY_OVERRIDE) {
+				//TODO
+			}
+
+			/* Create new */
 			auto child = std::make_unique<type_settings<T>>();
-			child->parent = this;
 			auto& ref = *child;
+			child->parent = shared_from_this();
 			children.emplace(key, std::move(child));
 			return ref;
 		}
 
 		scope& pop() {
-			if (!parent) {
+			if (!has_parent()) {
 				throw std::runtime_error("No parent to pop to");
 			}
-			auto* p = dynamic_cast<scope*>(parent);
+			auto* p = dynamic_cast<scope*>(parent.lock().get());
 			if (!p) {
 				throw std::runtime_error("Parent has unexpected type");
 			}
@@ -90,7 +102,7 @@ namespace svh {
 
 			if (has_parent() && SVH_RECURSIVE_SEARCH) {
 				// Recurse to parent
-				auto* p = dynamic_cast<scope*>(parent);
+				auto* p = dynamic_cast<scope*>(parent.lock().get());
 				if (!p) {
 					throw std::runtime_error("Parent has unexpected type");
 				}
