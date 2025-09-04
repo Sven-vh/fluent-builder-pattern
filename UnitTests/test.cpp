@@ -24,7 +24,7 @@ struct type_settings<float> : svh::scope {
 	const float& get_max() const { return _max; }
 };
 
-TEST(Default, Single) {
+TEST(Default, push_single) {
 	svh::scope root;
 	root.push<int>()
 		____.min(-50)
@@ -36,7 +36,7 @@ TEST(Default, Single) {
 	EXPECT_EQ(int_settings.get_max(), 50);
 }
 
-TEST(Default, Multiple) {
+TEST(Default, push_multiple) {
 	svh::scope root;
 	root.push<int>()
 		____.min(0)
@@ -57,7 +57,7 @@ TEST(Default, Multiple) {
 	EXPECT_EQ(float_settings.get_max(), 1.0f);
 }
 
-TEST(Default, Nested) {
+TEST(Default, push_nested) {
 	svh::scope root;
 	root.push<MyStruct>()
 		____.push<int>()
@@ -72,7 +72,7 @@ TEST(Default, Nested) {
 	EXPECT_EQ(mystruct_int_settings.get_max(), 20);
 }
 
-TEST(Default, Fallback) {
+TEST(Default, default_fallback) {
 	svh::scope root;
 
 	if (SVH_AUTO_INSERT) {
@@ -88,7 +88,7 @@ TEST(Default, Fallback) {
 	}
 }
 
-TEST(Default, Recursive) {
+TEST(Default, recusrive_fallback) {
 	svh::scope root;
 	root.push<int>()
 		____.min(0)
@@ -145,7 +145,6 @@ TEST(Default, push_default) {
 		.pop()
 		.push<MyStruct>()
 		____.push_default<int>()
-		/* min is default again */
 		________.max(20)
 		____.pop()
 		.pop();
@@ -157,4 +156,20 @@ TEST(Default, push_default) {
 	auto& mystruct_int_settings = root.get<MyStruct>().get<int>();
 	EXPECT_EQ(mystruct_int_settings.get_min(), std::numeric_limits<int>::min());
 	EXPECT_EQ(mystruct_int_settings.get_max(), 20);
+}
+
+// Function parameter passing
+void func(const svh::scope& s) {
+	auto& int_settings = s.get<int>();
+	EXPECT_EQ(int_settings.get_min(), -50);
+	EXPECT_EQ(int_settings.get_max(), 50);
+}
+
+TEST(Default, func_param) {
+	svh::scope root;
+	root.push<int>()
+		____.min(-50)
+		____.max(50)
+		.pop();
+	func(root);
 }
