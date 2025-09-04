@@ -260,3 +260,7 @@ TEST(Default, multi_pop) {
 	EXPECT_EQ(int_settings_a2.get_min(), int_settings_b2.get_min());
 	EXPECT_EQ(int_settings_a2.get_max(), int_settings_b2.get_max());
 }
+
+TEST(Default, multi_get) {
+	EXPECT_EQ(true, false);
+}
