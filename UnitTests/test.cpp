@@ -262,5 +262,18 @@ TEST(Default, multi_pop) {
 }
 
 TEST(Default, multi_get) {
-	EXPECT_EQ(true, false);
+	svh::scope root;
+	root.push<MyStruct, bool, float, int>()
+		________.min(-50)
+		________.max(50)
+		.pop();
+
+	auto& int_settings = root.get<MyStruct, bool, float, int>();
+	/* Same as */
+	auto& int_settings2 = root.get<MyStruct>().get<bool>().get<float>().get<int>();
+
+	EXPECT_EQ(int_settings.get_min(), -50);
+	EXPECT_EQ(int_settings.get_max(), 50);
+	EXPECT_EQ(int_settings.get_min(), int_settings2.get_min());
+	EXPECT_EQ(int_settings.get_max(), int_settings2.get_max());
 }
