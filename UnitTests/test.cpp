@@ -20,6 +20,7 @@ struct type_settings<float> : svh::scope {
 	float _max = std::numeric_limits<float>::max();
 	type_settings& min(const float& v) { _min = v; return *this; }
 	type_settings& max(const float& v) { _max = v; return *this; }
+	type_settings& balls() { return *this; } // For testing
 	const float& get_min() const { return _min; }
 	const float& get_max() const { return _max; }
 };
@@ -70,6 +71,26 @@ TEST(Default, push_nested) {
 
 	EXPECT_EQ(mystruct_int_settings.get_min(), 10);
 	EXPECT_EQ(mystruct_int_settings.get_max(), 20);
+}
+
+TEST(Default, push_and_set) {
+	svh::scope root;
+	root.push<int>()
+		____.min(-50)
+		____.max(50)
+		____.push<float>()
+		________.min(-1.0f)
+		________.max(1.0f)
+		____.pop()
+		.pop();
+
+	auto& int_settings = root.get<int>();
+	EXPECT_EQ(int_settings.get_min(), -50);
+	EXPECT_EQ(int_settings.get_max(), 50);
+
+	auto& float_settings = int_settings.get<float>();
+	EXPECT_EQ(float_settings.get_min(), -1.0f);
+	EXPECT_EQ(float_settings.get_max(), 1.0f);
 }
 
 TEST(Default, default_fallback) {
@@ -159,7 +180,7 @@ TEST(Default, push_default) {
 }
 
 // Function parameter passing
-void func(const svh::scope& s) {
+static void func(const svh::scope& s) {
 	auto& int_settings = s.get<int>();
 	EXPECT_EQ(int_settings.get_min(), -50);
 	EXPECT_EQ(int_settings.get_max(), 50);
@@ -172,4 +193,70 @@ TEST(Default, func_param) {
 		____.max(50)
 		.pop();
 	func(root);
+}
+
+TEST(Default, typed_func_param) {
+	svh::scope root;
+	root.push<MyStruct>()
+		____.push<int>()
+		________.min(-50)
+		________.max(50)
+		____.pop()
+		.pop();
+
+	func(root.get<MyStruct>());
+}
+
+TEST(Default, multi_push) {
+	svh::scope root;
+	root.push<MyStruct, int>()
+		____.min(-50)
+		____.max(50)
+		.pop()
+		.pop();
+
+	auto& int_settings = root.get<MyStruct>().get<int>();
+	EXPECT_EQ(int_settings.get_min(), -50);
+	EXPECT_EQ(int_settings.get_max(), 50);
+}
+
+TEST(Default, multi_pop) {
+	svh::scope root_a;
+	root_a.push<MyStruct, float, bool, int>()
+		____.min(-50)
+		____.max(50)
+		.pop(2) // Pop twice back to float
+		.push<int>()
+		____.min(-100)
+		____.max(100)
+		.pop(3);
+
+	/* Is same as */
+
+	svh::scope root_b;
+	root_b.push<MyStruct>()
+		____.push<float>()
+		________.push<bool>()
+		____________.push<int>()
+		________________.min(-50)
+		________________.max(50)
+		____________.pop()
+		________.pop()
+		________.push<int>()
+		____________.min(-100)
+		____________.max(100)
+		________.pop()
+		____.pop()
+		.pop();
+
+
+	auto& int_settings_a = root_a.get<MyStruct>().get<float>().get<bool>().get<int>();
+	auto& int_settings_b = root_b.get<MyStruct>().get<float>().get<bool>().get<int>();
+	EXPECT_EQ(int_settings_a.get_min(), int_settings_b.get_min());
+	EXPECT_EQ(int_settings_a.get_max(), int_settings_b.get_max());
+
+	auto& int_settings_a2 = root_a.get<MyStruct>().get<float>().get<int>();
+	auto& int_settings_b2 = root_b.get<MyStruct>().get<float>().get<int>();
+	EXPECT_EQ(int_settings_a2.get_min(), int_settings_b2.get_min());
+	EXPECT_EQ(int_settings_a2.get_max(), int_settings_b2.get_max());
 }
