@@ -136,3 +136,25 @@ TEST(Default, overides) {
 	EXPECT_EQ(mystruct_int_settings.get_min(), -50);
 	EXPECT_EQ(mystruct_int_settings.get_max(), 20);
 }
+
+TEST(Default, push_default) {
+	svh::scope root;
+	root.push<int>()
+		____.min(-50)
+		____.max(50)
+		.pop()
+		.push<MyStruct>()
+		____.push_default<int>()
+		/* min is default again */
+		________.max(20)
+		____.pop()
+		.pop();
+
+	auto& int_settings = root.get<int>();
+	EXPECT_EQ(int_settings.get_min(), -50);
+	EXPECT_EQ(int_settings.get_max(), 50);
+
+	auto& mystruct_int_settings = root.get<MyStruct>().get<int>();
+	EXPECT_EQ(mystruct_int_settings.get_min(), std::numeric_limits<int>::min());
+	EXPECT_EQ(mystruct_int_settings.get_max(), 20);
+}
