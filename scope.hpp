@@ -116,28 +116,22 @@ namespace svh {
 			return *parent;
 		}
 
+		/// <summary>
+		/// Get the scope for type T. If not found, recurse to parent.
+		/// If not found and at root, optionally insert a default one depending on ``SVH_AUTO_INSERT``.
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <returns></returns>
 		template<typename T>
 		type_settings<T>& get() {
-			const std::type_index key = get_type_key<T>();
-			auto it = children.find(key);
-			if (it != children.end()) {
-				auto* found = dynamic_cast<type_settings<T>*>(it->second.get());
-				if (!found) {
-					throw std::runtime_error("Existing child has unexpected type");
-				}
+
+			auto* found = find<T>();
+			if (found) {
 				return *found;
 			}
 
 			if (is_root() && SVH_AUTO_INSERT) {
-				return push<T>();
-			}
-
-			if (has_parent()) {
-				// Recurse to parent
-				if (!parent) {
-					throw std::runtime_error("Parent pointer is null");
-				}
-				return parent->get<T>();
+				return emplace_new<T>();
 			}
 
 			throw std::runtime_error("Type not found");
