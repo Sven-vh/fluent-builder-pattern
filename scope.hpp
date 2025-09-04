@@ -113,19 +113,17 @@ namespace svh {
 		/// <typeparam name="T">The type of the scope to get</typeparam>
 		/// <returns>Reference to the found scope</returns>
 		/// <exception cref="std::runtime_error">If not found and at root and ``SVH_AUTO_INSERT`` is false</exception>
-		template<class T>
+		template <class T>
 		type_settings<T>& get() {
+			return _get<T>();
+		}
 
-			auto* found = find<T>();
-			if (found) {
-				return *found;
-			}
-
-			if (is_root() && SVH_AUTO_INSERT) {
-				return emplace_new<T>();
-			}
-
-			throw std::runtime_error("Type not found");
+		template <class T, class U, class... Rest>
+		auto& get() {
+			auto& next = _get<T>();
+			/* If rest is something, we recurse */
+			/* If rest is nothing, we fall back to single T get */
+			return next.template get<U, Rest...>();
 		}
 
 		/// <summary>
@@ -135,13 +133,17 @@ namespace svh {
 		/// <typeparam name="T">The type of the scope to get</typeparam>
 		/// <returns>Reference to the found scope</returns>
 		/// <exception cref="std::runtime_error">If not found</exception>
-		template<class T>
+		template <class T>
 		const type_settings<T>& get() const {
-			auto* found = find<T>();
-			if (found) {
-				return *found;
-			}
-			throw std::runtime_error("Type not found");
+			return _get<T>();
+		}
+
+		template <class T, class U, class... Rest>
+		const auto& get() const {
+			auto& next = _get<T>();
+			/* If rest is something, we recurse */
+			/* If rest is nothing, we fall back to single T get */
+			return next.template get<U, Rest...>();
 		}
 
 		/// <summary>
@@ -231,6 +233,31 @@ namespace svh {
 
 			/* Else create new */
 			return emplace_new<T>();
+		}
+
+
+		template<class T>
+		type_settings<T>& _get() {
+
+			auto* found = find<T>();
+			if (found) {
+				return *found;
+			}
+
+			if (is_root() && SVH_AUTO_INSERT) {
+				return emplace_new<T>();
+			}
+
+			throw std::runtime_error("Type not found");
+		}
+
+		template<class T>
+		const type_settings<T>& _get() const {
+			auto* found = find<T>();
+			if (found) {
+				return *found;
+			}
+			throw std::runtime_error("Type not found");
 		}
 	};
 } // namespace svh
