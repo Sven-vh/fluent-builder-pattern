@@ -8,24 +8,10 @@
 #include <tuple>
 #include <type_traits>
 
-/* Whether to insert a default object at root level if not found in any scope*/
+/* Whether to insert a default object when calling get at root level if not found in any scope*/
 #ifndef SVH_AUTO_INSERT
 #define SVH_AUTO_INSERT true
 #endif
-
-namespace svh {
-	namespace detail {
-		/* Source: https://stackoverflow.com/questions/18942322/effective-way-to-select-last-parameter-of-variadic-template */
-		template <typename ...Ts>
-		struct select_last {
-			using type = typename decltype((std::enable_if<true, Ts>{}, ...))::type; /* Requires C++ 17 */
-		};
-
-		template <typename ...Ts>
-		using select_last_t = typename select_last<Ts...>::type;
-	}
-}
-static_assert(std::is_same_v<int, svh::detail::select_last_t<float, bool, int>>);
 
 // Forward declare
 template<class T>
@@ -176,7 +162,9 @@ namespace svh {
 		/// <param name="indent">Indentation level</param>
 		void debug_log(int indent = 0) const {
 			std::string prefix(indent, ' ');
-			for (const auto& [key, child] : children) {
+			for (const auto& pair : children) {
+				const auto& key = pair.first;
+				const auto& child = pair.second;
 				const auto& name = key.name();
 				std::cout << prefix << name << "\n";
 				child->debug_log(indent + 2);
