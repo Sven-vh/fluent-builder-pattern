@@ -1,11 +1,9 @@
 #pragma once
 #include <unordered_map>
 #include <typeindex>
-#include <any>
 #include <iostream>
 #include <stdexcept>
 #include <memory>
-#include <tuple>
 #include <type_traits>
 
 /* Whether to insert a default object when calling get at root level if not found in any scope*/
