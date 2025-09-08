@@ -38,3 +38,4 @@ out-int
 packages
 *.user
 *.filters
+x64
