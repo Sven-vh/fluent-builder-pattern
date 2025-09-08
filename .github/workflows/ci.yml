@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+      
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v2
+      
+    - name: Restore NuGet packages
+      run: nuget restore FluentBuilderPattern.sln
+      
+    - name: Build solution
+      run: msbuild FluentBuilderPattern.sln /p:Configuration=Release /p:Platform=x64 /p:WarningLevel=4 /verbosity:minimal
+      
+    - name: Run unit tests
+      run: |
+        $testExe = ".\UnitTests\out\Release-x64\UnitTests.exe"
+        if (Test-Path $testExe) {
+          & $testExe --gtest_output=xml:test_results.xml
+        } else {
+          Write-Error "Test executable not found at $testExe"
+          exit 1
+        }
+      shell: powershell
+      
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: test_results.xml
