@@ -51,12 +51,30 @@ template<>
 struct type_settings<MyConfig> : svh::scope {
     std::string name = "default";
     bool enabled = true;
+    int priority = 0;
     
     type_settings& set_name(const std::string& n) { name = n; return *this; }
     type_settings& set_enabled(bool e) { enabled = e; return *this; }
+    type_settings& set_priority(int p) { priority = p; return *this; }
     
     const std::string& get_name() const { return name; }
     bool is_enabled() const { return enabled; }
+    int get_priority() const { return priority; }
+};
+
+// Another custom struct example
+struct MyStruct {};
+
+template<>
+struct type_settings<MyStruct> : svh::scope {
+    float value = 1.0f;
+    std::string category = "general";
+    
+    type_settings& set_value(float v) { value = v; return *this; }
+    type_settings& set_category(const std::string& c) { category = c; return *this; }
+    
+    float get_value() const { return value; }
+    const std::string& get_category() const { return category; }
 };
 ```
 
@@ -213,6 +231,8 @@ init_graphics(game_config);
 
 ```cpp
 struct ValidationRules {};
+struct EmailField {};
+struct PasswordField {};
 
 template<>
 struct type_settings<ValidationRules> : svh::scope {
@@ -224,6 +244,26 @@ struct type_settings<ValidationRules> : svh::scope {
     type_settings& length_range(int min, int max) { 
         min_length = min; max_length = max; return *this; 
     }
+};
+
+template<>
+struct type_settings<EmailField> : svh::scope {
+    std::string pattern = ".*@.*";
+    bool validate_domain = false;
+    
+    type_settings& set_pattern(const std::string& p) { pattern = p; return *this; }
+    type_settings& enable_domain_validation(bool v) { validate_domain = v; return *this; }
+};
+
+template<>
+struct type_settings<PasswordField> : svh::scope {
+    bool require_uppercase = false;
+    bool require_numbers = false;
+    bool require_symbols = false;
+    
+    type_settings& require_uppercase_letters(bool r) { require_uppercase = r; return *this; }
+    type_settings& require_numeric_digits(bool r) { require_numbers = r; return *this; }
+    type_settings& require_special_symbols(bool r) { require_symbols = r; return *this; }
 };
 
 // Create different validation contexts
@@ -258,29 +298,64 @@ struct Database {};
 struct Cache {};
 struct API {};
 
+template<>
+struct type_settings<Database> : svh::scope {
+    std::string host = "localhost";
+    int port = 5432;
+    int timeout = 30;
+    std::string username = "user";
+    
+    type_settings& set_host(const std::string& h) { host = h; return *this; }
+    type_settings& set_port(int p) { port = p; return *this; }
+    type_settings& set_timeout(int t) { timeout = t; return *this; }
+    type_settings& set_username(const std::string& u) { username = u; return *this; }
+};
+
+template<>
+struct type_settings<Cache> : svh::scope {
+    int ttl = 3600;  // Time to live in seconds
+    int max_size = 1000;
+    bool enabled = true;
+    
+    type_settings& set_ttl(int t) { ttl = t; return *this; }
+    type_settings& set_max_size(int s) { max_size = s; return *this; }
+    type_settings& enable(bool e) { enabled = e; return *this; }
+};
+
+template<>
+struct type_settings<API> : svh::scope {
+    std::string base_url = "https://api.example.com";
+    int rate_limit = 1000;
+    int timeout = 10;
+    
+    type_settings& set_base_url(const std::string& url) { base_url = url; return *this; }
+    type_settings& set_rate_limit(int limit) { rate_limit = limit; return *this; }
+    type_settings& set_timeout(int t) { timeout = t; return *this; }
+};
+
 svh::scope production_config;
 
 // Production defaults
 production_config.push<Database>()
-    ____.host("prod-db.company.com")
-    ____.port(5432)
-    ____.timeout(30)
+    ____.set_host("prod-db.company.com")
+    ____.set_port(5432)
+    ____.set_timeout(30)
     .pop()
     .push<Cache>()
-    ____.ttl(3600)
-    ____.max_size(1000)
+    ____.set_ttl(3600)
+    ____.set_max_size(1000)
     .pop();
 
 // Development environment inherits but overrides some settings
 svh::scope dev_config = production_config; // Copy base config
 
 dev_config.push<Database>()
-    ____.host("localhost")                // Override host
-    ____.port(5433)                       // Override port
+    ____.set_host("localhost")            // Override host
+    ____.set_port(5433)                   // Override port
     // timeout remains 30 (inherited)
     .pop()
     .push<Cache>()
-    ____.ttl(60)                          // Shorter TTL for dev
+    ____.set_ttl(60)                      // Shorter TTL for dev
     // max_size remains 1000 (inherited)
     .pop();
 ```
@@ -288,6 +363,44 @@ dev_config.push<Database>()
 ### 4. Function Parameter Configuration
 
 ```cpp
+struct PhysicsSettings {};
+struct GraphicsSettings {};
+struct AISettings {};
+
+template<>
+struct type_settings<PhysicsSettings> : svh::scope {
+    float gravity = -9.81f;
+    float timestep = 0.016f;
+    bool collision_detection = true;
+    
+    type_settings& set_gravity(float g) { gravity = g; return *this; }
+    type_settings& set_timestep(float t) { timestep = t; return *this; }
+    type_settings& enable_collision(bool c) { collision_detection = c; return *this; }
+};
+
+template<>
+struct type_settings<GraphicsSettings> : svh::scope {
+    bool shadows = false;
+    std::string quality = "medium";
+    int fps_limit = 60;
+    bool vsync = true;
+    
+    type_settings& enable_shadows(bool s) { shadows = s; return *this; }
+    type_settings& set_quality(const std::string& q) { quality = q; return *this; }
+    type_settings& set_fps_limit(int fps) { fps_limit = fps; return *this; }
+    type_settings& enable_vsync(bool v) { vsync = v; return *this; }
+};
+
+template<>
+struct type_settings<AISettings> : svh::scope {
+    float difficulty = 0.5f;
+    int update_frequency = 30;
+    bool pathfinding = true;
+    
+    type_settings& set_difficulty(float d) { difficulty = d; return *this; }
+    type_settings& set_update_frequency(int freq) { update_frequency = freq; return *this; }
+    type_settings& enable_pathfinding(bool p) { pathfinding = p; return *this; }
+};
 // Configure a complex algorithm
 void run_simulation(const svh::scope& config) {
     auto& physics = config.get<PhysicsSettings>();
@@ -299,16 +412,16 @@ void run_simulation(const svh::scope& config) {
 
 svh::scope sim_config;
 sim_config.push<PhysicsSettings>()
-    ____.gravity(-9.81f)
-    ____.timestep(0.016f)
+    ____.set_gravity(-9.81f)
+    ____.set_timestep(0.016f)
     .pop()
     .push<GraphicsSettings>()
-    ____.shadows(true)
-    ____.quality("high")
+    ____.enable_shadows(true)
+    ____.set_quality("high")
     .pop()
     .push<AISettings>()
-    ____.difficulty(0.8f)
-    ____.update_frequency(60)
+    ____.set_difficulty(0.8f)
+    ____.set_update_frequency(60)
     .pop();
 
 run_simulation(sim_config);
