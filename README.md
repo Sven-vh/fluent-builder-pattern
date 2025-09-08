@@ -2,7 +2,16 @@
 
 # FluentBuilderPattern
 
-A modern C++ library implementing a scope-based fluent builder pattern for creating hierarchical, type-safe configuration systems.
+A modern C++ library implementing a scope-based fluent builder pattern for creating hierarchical, type-safe configuration systems. It allows you to create nested configuration scopes where child scopes inherit settings from their parents, with the ability to override specific values at any level.
+
+## What is FluentBuilderPattern?
+
+This library provides a way to configure complex, nested settings using a fluent API with visual indentation. Think of it as a hierarchical configuration system where:
+
+- **Settings are organized by type** - Each type (int, float, custom structs) has its own configuration space
+- **Scopes can be nested** - Create parent-child relationships between configuration scopes
+- **Inheritance works automatically** - Child scopes inherit parent settings unless overridden
+- **Visual clarity** - Special indentation macros make the configuration structure obvious
 
 ## Features
 
@@ -13,9 +22,49 @@ A modern C++ library implementing a scope-based fluent builder pattern for creat
 - **Header-only**: Single header implementation for easy integration
 - **Visual clarity**: Built-in indentation macros for readable configuration code
 
+## Adding Custom Settings
+
+To use the library with your own types, you need to specialize the `type_settings` template:
+
+```cpp
+#include "scope.hpp"
+
+// Specialize type_settings for your type
+template<>
+struct type_settings<int> : svh::scope {
+    int _min = std::numeric_limits<int>::min();
+    int _max = std::numeric_limits<int>::max();
+    
+    // Fluent API methods
+    type_settings& min(const int& v) { _min = v; return *this; }
+    type_settings& max(const int& v) { _max = v; return *this; }
+    
+    // Getter methods
+    const int& get_min() const { return _min; }
+    const int& get_max() const { return _max; }
+};
+
+// For custom structs
+struct MyConfig {};
+
+template<>
+struct type_settings<MyConfig> : svh::scope {
+    std::string name = "default";
+    bool enabled = true;
+    
+    type_settings& set_name(const std::string& n) { name = n; return *this; }
+    type_settings& set_enabled(bool e) { enabled = e; return *this; }
+    
+    const std::string& get_name() const { return name; }
+    bool is_enabled() const { return enabled; }
+};
+```
+
 ## Quick Start
 
-### Basic Usage
+### Basic Usage with Push/Pop
+
+The core concept involves creating scopes for different types and using `push()` to enter a scope and `pop()` to exit back to the parent:
 
 ```cpp
 #include "scope.hpp"
@@ -23,11 +72,11 @@ A modern C++ library implementing a scope-based fluent builder pattern for creat
 // Create a root scope
 svh::scope root;
 
-// Configure settings using fluent API
-root.push<int>()
-    ____.min(-50)
-    ____.max(50)
-    .pop();
+// Push into an int scope, configure it, then pop back
+root.push<int>()           // Enter int configuration scope
+    ____.min(-50)          // Set minimum value (indentation is visual only)
+    ____.max(50)           // Set maximum value
+    .pop();                // Return to root scope
 
 // Retrieve configured settings
 auto& int_settings = root.get<int>();
@@ -35,7 +84,13 @@ std::cout << "Min: " << int_settings.get_min() << std::endl; // Output: Min: -50
 std::cout << "Max: " << int_settings.get_max() << std::endl; // Output: Max: 50
 ```
 
-### Multiple Types
+### Push/Pop Mechanics Explained
+
+- **`push<T>()`**: Enters a configuration scope for type T. If the scope doesn't exist, it creates one. If a parent scope has settings for T, they are inherited.
+- **`pop()`**: Returns to the parent scope. You must call `pop()` to return to where you started.
+- **Indentation macros** (`____`, `________`, etc.): These are just empty macros that provide visual indentation - they don't affect functionality but make nested configurations easier to read.
+
+### Multiple Types in Sequence
 
 ```cpp
 svh::scope root;
@@ -43,49 +98,223 @@ svh::scope root;
 root.push<int>()
     ____.min(0)
     ____.max(100)
-    .pop()
-    .push<float>()
+    .pop()                 // Back to root
+    .push<float>()         // Now configure float
     ____.min(-1.0f)
     ____.max(1.0f)
-    .pop();
+    .pop();                // Back to root
 
 auto& int_settings = root.get<int>();
 auto& float_settings = root.get<float>();
 ```
 
-### Nested Scopes
+### Nested Scopes and Inheritance
+
+Create hierarchical configurations where child scopes inherit parent settings:
 
 ```cpp
 svh::scope root;
 
-root.push<MyStruct>()
-    ____.push<int>()
-    ________.min(10)
-    ________.max(20)
-    ____.pop()
+// Configure root-level int settings
+root.push<int>()
+    ____.min(-100)
+    ____.max(100)
     .pop();
 
-// Access nested settings
-auto& nested_settings = root.get<MyStruct>().get<int>();
+// Create a MyStruct scope with its own int settings
+root.push<MyStruct>()
+    ____.push<int>()           // This inherits min=-100, max=100 from root
+    ________.max(20)           // Override only the max value
+    ____.pop()                 // Back to MyStruct scope
+    .pop();                    // Back to root
+
+// Access the nested settings
+auto& root_int = root.get<int>();                    // min=-100, max=100
+auto& nested_int = root.get<MyStruct>().get<int>(); // min=-100, max=20 (inherited + override)
 ```
 
-### Multi-level Push/Get
+### Multiple Push/Pop Operations
+
+You can push multiple levels at once and pop multiple levels:
 
 ```cpp
 svh::scope root;
 
-// Push multiple types at once
+// Push multiple types at once: MyStruct -> bool -> float -> int
 root.push<MyStruct, bool, float, int>()
-    ________.min(-50)
+    ________.min(-50)          // Configure the final int scope
     ________.max(50)
-    .pop();
+    .pop();                    // Pop back through all levels to root
 
-// Get nested settings in one call
+// Access nested settings in one call
 auto& settings = root.get<MyStruct, bool, float, int>();
 // Equivalent to: root.get<MyStruct>().get<bool>().get<float>().get<int>()
 ```
 
-## Configuration
+## Example Use Cases
+
+### 1. Game Configuration System
+
+```cpp
+struct Player {};
+struct Graphics {};
+struct Audio {};
+
+// Set up type_settings for each
+template<>
+struct type_settings<Player> : svh::scope {
+    std::string name = "Player1";
+    int level = 1;
+    float health = 100.0f;
+    
+    type_settings& set_name(const std::string& n) { name = n; return *this; }
+    type_settings& set_level(int l) { level = l; return *this; }
+    type_settings& set_health(float h) { health = h; return *this; }
+};
+
+template<>
+struct type_settings<Graphics> : svh::scope {
+    int width = 1920, height = 1080;
+    bool fullscreen = false;
+    
+    type_settings& resolution(int w, int h) { width = w; height = h; return *this; }
+    type_settings& set_fullscreen(bool f) { fullscreen = f; return *this; }
+};
+
+// Usage:
+svh::scope game_config;
+
+game_config.push<Player>()
+    ____.set_name("Hero")
+    ____.set_level(5)
+    ____.set_health(150.0f)
+    .pop()
+    .push<Graphics>()
+    ____.resolution(2560, 1440)
+    ____.set_fullscreen(true)
+    .pop();
+
+// Pass configuration to different systems
+void init_player(const svh::scope& config) {
+    auto& player = config.get<Player>();
+    // Initialize player with player.name, player.level, etc.
+}
+
+void init_graphics(const svh::scope& config) {
+    auto& gfx = config.get<Graphics>();
+    // Set up graphics with gfx.width, gfx.height, etc.
+}
+
+init_player(game_config);
+init_graphics(game_config);
+```
+
+### 2. Validation Rules System
+
+```cpp
+struct ValidationRules {};
+
+template<>
+struct type_settings<ValidationRules> : svh::scope {
+    bool required = false;
+    int min_length = 0;
+    int max_length = INT_MAX;
+    
+    type_settings& require() { required = true; return *this; }
+    type_settings& length_range(int min, int max) { 
+        min_length = min; max_length = max; return *this; 
+    }
+};
+
+// Create different validation contexts
+svh::scope validation_config;
+
+// Default validation rules
+validation_config.push<ValidationRules>()
+    ____.length_range(1, 100)
+    .pop();
+
+// Email field with stricter rules  
+validation_config.push<EmailField>()
+    ____.push<ValidationRules>()
+    ________.require()                    // Inherits length_range(1,100)
+    ________.length_range(5, 255)        // Override length limits
+    ____.pop()
+    .pop();
+
+// Password field with different rules
+validation_config.push<PasswordField>()
+    ____.push<ValidationRules>()
+    ________.require()                    // Inherits length_range(1,100)
+    ________.length_range(8, 50)         // Override for passwords
+    ____.pop()
+    .pop();
+```
+
+### 3. API Configuration with Environment Overrides
+
+```cpp
+struct Database {};
+struct Cache {};
+struct API {};
+
+svh::scope production_config;
+
+// Production defaults
+production_config.push<Database>()
+    ____.host("prod-db.company.com")
+    ____.port(5432)
+    ____.timeout(30)
+    .pop()
+    .push<Cache>()
+    ____.ttl(3600)
+    ____.max_size(1000)
+    .pop();
+
+// Development environment inherits but overrides some settings
+svh::scope dev_config = production_config; // Copy base config
+
+dev_config.push<Database>()
+    ____.host("localhost")                // Override host
+    ____.port(5433)                       // Override port
+    // timeout remains 30 (inherited)
+    .pop()
+    .push<Cache>()
+    ____.ttl(60)                          // Shorter TTL for dev
+    // max_size remains 1000 (inherited)
+    .pop();
+```
+
+### 4. Function Parameter Configuration
+
+```cpp
+// Configure a complex algorithm
+void run_simulation(const svh::scope& config) {
+    auto& physics = config.get<PhysicsSettings>();
+    auto& graphics = config.get<GraphicsSettings>();
+    auto& ai = config.get<AISettings>();
+    
+    // Use the configurations...
+}
+
+svh::scope sim_config;
+sim_config.push<PhysicsSettings>()
+    ____.gravity(-9.81f)
+    ____.timestep(0.016f)
+    .pop()
+    .push<GraphicsSettings>()
+    ____.shadows(true)
+    ____.quality("high")
+    .pop()
+    .push<AISettings>()
+    ____.difficulty(0.8f)
+    ____.update_frequency(60)
+    .pop();
+
+run_simulation(sim_config);
+```
+
+## Configuration Options
 
 The library behavior can be customized using preprocessor definitions:
 
@@ -135,19 +364,35 @@ struct type_settings<int> : svh::scope {
 
 ### Visual Indentation Macros
 
-The library provides macros for visual clarity in nested configurations:
+The library provides macros for visual clarity in nested configurations. These are completely optional but help make code more readable:
 
-- `____` - 4 spaces indentation
-- `________` - 8 spaces indentation  
-- `____________` - 12 spaces indentation
-- `________________` - 16 spaces indentation
+```cpp
+// Without indentation macros:
+root.push<MyStruct>().push<int>().min(10).max(20).pop().pop();
+
+// With indentation macros for clarity:
+root.push<MyStruct>()
+    ____.push<int>()
+    ________.min(10)
+    ________.max(20)
+    ____.pop()
+    .pop();
+```
+
+Available macros:
+- `____` - 4 spaces indentation (single level)
+- `________` - 8 spaces indentation (two levels)
+- `____________` - 12 spaces indentation (three levels)
+- `________________` - 16 spaces indentation (four levels)
+
+**Important**: These macros are purely cosmetic and don't affect functionality. They're defined as empty macros that help visualize the scope nesting structure.
 
 ## Building and Testing
 
 This is a header-only library. Simply include `scope.hpp` in your project.
 
 ### Requirements
-- C++11 or later
+- C++14 or later (uses `auto` return types and `std::make_unique`)
 - Standard library support for `<unordered_map>`, `<typeindex>`, `<memory>`
 
 ### Running Tests
@@ -171,6 +416,8 @@ The project includes comprehensive unit tests using Google Test:
 
 ### Function Parameter Passing
 
+The library excels at passing complex configurations to functions:
+
 ```cpp
 void configure_system(const svh::scope& config) {
     auto& int_settings = config.get<int>();
@@ -187,6 +434,8 @@ configure_system(root);
 ```
 
 ### Default Fallback Behavior
+
+Control what happens when accessing non-existent settings:
 
 ```cpp
 svh::scope root;
