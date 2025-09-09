@@ -277,3 +277,79 @@ TEST(Default, multi_get) {
 	EXPECT_EQ(int_settings.get_min(), int_settings2.get_min());
 	EXPECT_EQ(int_settings.get_max(), int_settings2.get_max());
 }
+
+TEST(Default, get_nonexistent) {
+	svh::scope root;
+	EXPECT_THROW(root.get<MyStruct>().get<int>(), std::runtime_error);
+}
+
+/* Member variables tests*/
+struct TestStruct {
+	int a;
+	int b;
+};
+
+TEST(Default, member_variable) {
+	svh::scope root;
+	root.push<TestStruct>()
+		____.push_member<&TestStruct::a>()
+		________.min(0)
+		________.max(10)
+		____.pop()
+		____.push_member<&TestStruct::b>()
+		________.min(20)
+		________.max(30)
+		____.pop()
+		.pop();
+
+	auto& a_settings = root.get<TestStruct>().get_member<&TestStruct::a>();
+	EXPECT_EQ(a_settings.get_min(), 0);
+	EXPECT_EQ(a_settings.get_max(), 10);
+
+	auto& b_settings = root.get<TestStruct>().get_member<&TestStruct::b>();
+	EXPECT_EQ(b_settings.get_min(), 20);
+	EXPECT_EQ(b_settings.get_max(), 30);
+}
+
+TEST(Default, member_variable_runtime) {
+	svh::scope root;
+	root.push<TestStruct>()
+		____.push_member<&TestStruct::a>()
+		________.min(0)
+		________.max(10)
+		____.pop()
+		____.push_member<&TestStruct::b>()
+		________.min(20)
+		________.max(30)
+		____.pop()
+		.pop();
+
+	TestStruct instance{ 1, 2 };
+
+	auto& a_settings = root.get<TestStruct>().get_member(instance, instance.a);
+	EXPECT_EQ(a_settings.get_min(), 0);
+	EXPECT_EQ(a_settings.get_max(), 10);
+
+	auto& b_settings = root.get<TestStruct>().get_member(instance, instance.b);
+	EXPECT_EQ(b_settings.get_min(), 20);
+	EXPECT_EQ(b_settings.get_max(), 30);
+}
+
+template<class T, class M>
+void do_something(const svh::scope& s, const T& instance, const M& member) {
+	auto& settings = s.get<TestStruct>().get_member(instance, member);
+	EXPECT_EQ(settings.get_min(), 0);
+	EXPECT_EQ(settings.get_max(), 10);
+}
+
+TEST(Default, member_variable_func) {
+	svh::scope root;
+	root.push<TestStruct>()
+		____.push_member<&TestStruct::a>()
+		________.min(0)
+		________.max(10)
+		____.pop()
+		.pop();
+	TestStruct instance{ 1, 2 };
+	do_something(root, instance, instance.a);
+}
