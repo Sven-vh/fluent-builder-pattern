@@ -109,6 +109,8 @@ namespace svh {
 			const std::size_t member_offset = get_member_offset<member>();
 			const auto key = std::make_pair(type_key, member_offset);
 
+			printf("Pushing member of type %s at offset %zu\n", type_key.name(), member_offset);
+
 			// Check if already exists in current scope
 			auto it = member_children.find(key);
 			if (it != member_children.end()) {
@@ -269,6 +271,7 @@ namespace svh {
 			const std::size_t member_offset = get_member_offset<member>();
 			const auto key = std::make_pair(type_key, member_offset);
 
+			/* Check member map */
 			auto it = member_children.find(key);
 			if (it != member_children.end()) {
 				auto* found = dynamic_cast<type_settings<MemberType>*>(it->second.get());
@@ -278,11 +281,24 @@ namespace svh {
 				return found;
 			}
 
+			/* Check in children of type ClassType */
+			auto class_it = children.find(type_key);
+			if (class_it != children.end()) {
+				auto* class_scope = dynamic_cast<type_settings<ClassType>*>(class_it->second.get());
+				if (!class_scope) {
+					throw std::runtime_error("Existing child has unexpected type");
+				}
+				auto* found = class_scope->template find<MemberType>();
+				if (found) {
+					return found;
+				}
+			}
+
+			/* Recurse to parent */
 			if (has_parent()) {
 				return parent->find_member<member>();
 			}
 
-			//return nullptr; // Doesn't work since we use auto
 			return static_cast<type_settings<MemberType>*>(nullptr);
 		}
 
@@ -309,7 +325,9 @@ namespace svh {
 			const std::size_t member_offset = static_cast<std::size_t>(member_addr - instance_addr);
 			const std::type_index type_key = std::type_index{ typeid(T) };
 			const auto key = std::make_pair(type_key, member_offset);
+			printf("Looking for member of type %s at offset %zu\n", type_key.name(), member_offset);
 
+			/* Check member map */
 			auto it = member_children.find(key);
 			if (it != member_children.end()) {
 				auto* found = dynamic_cast<type_settings<M>*>(it->second.get());
@@ -319,6 +337,20 @@ namespace svh {
 				return found;
 			}
 
+			/* Check in children of type T */
+			auto class_it = children.find(type_key);
+			if (class_it != children.end()) {
+				auto* class_scope = dynamic_cast<type_settings<T>*>(class_it->second.get());
+				if (!class_scope) {
+					throw std::runtime_error("Existing child has unexpected type");
+				}
+				auto* found = class_scope->template find<M>();
+				if (found) {
+					return found;
+				}
+			}
+
+			/* Recurse to parent */
 			if (has_parent()) {
 				return parent->find_member_runtime(instance, member);
 			}

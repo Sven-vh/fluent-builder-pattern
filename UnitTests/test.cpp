@@ -123,17 +123,12 @@ TEST(Default, recusrive_fallback) {
 		.pop();
 
 	auto& mystruct_settings = root.get<MyStruct>();
-	if (SVH_RECURSIVE_SEARCH) {
-		auto& mystruct_int_settings = mystruct_settings.get<int>();
-		auto& mystruct_float_settings = mystruct_settings.get<float>();
-		EXPECT_EQ(mystruct_int_settings.get_min(), 0);
-		EXPECT_EQ(mystruct_int_settings.get_max(), 50);
-		EXPECT_EQ(mystruct_float_settings.get_min(), -1.0f);
-		EXPECT_EQ(mystruct_float_settings.get_max(), 1.0f);
-	} else {
-		EXPECT_THROW(mystruct_settings.get<int>(), std::runtime_error);
-		EXPECT_THROW(mystruct_settings.get<float>(), std::runtime_error);
-	}
+	auto& mystruct_int_settings = mystruct_settings.get<int>();
+	auto& mystruct_float_settings = mystruct_settings.get<float>();
+	EXPECT_EQ(mystruct_int_settings.get_min(), 0);
+	EXPECT_EQ(mystruct_int_settings.get_max(), 50);
+	EXPECT_EQ(mystruct_float_settings.get_min(), -1.0f);
+	EXPECT_EQ(mystruct_float_settings.get_max(), 1.0f);
 }
 
 TEST(Default, overides) {
@@ -333,6 +328,28 @@ TEST(Default, member_variable_runtime) {
 	auto& b_settings = root.get<TestStruct>().get_member(instance, instance.b);
 	EXPECT_EQ(b_settings.get_min(), 20);
 	EXPECT_EQ(b_settings.get_max(), 30);
+}
+
+TEST(Default, member_fallback) {
+	svh::scope root;
+	root.push<TestStruct>()
+		____.push<int>()
+		________.min(0)
+		________.max(5)
+		____.pop()
+		____.push_member<&TestStruct::b>()
+		________.max(10)
+		____.pop()
+		.pop();
+
+	TestStruct instance{ 1, 2 };
+	auto& b_settings = root.get<TestStruct>().get_member(instance, instance.a);
+	EXPECT_EQ(b_settings.get_min(), 0);
+	EXPECT_EQ(b_settings.get_max(), 5);
+
+	auto& a_settings = root.get<TestStruct>().get_member(instance, instance.b);
+	EXPECT_EQ(a_settings.get_min(), 0);
+	EXPECT_EQ(a_settings.get_max(), 10);
 }
 
 template<class T, class M>
