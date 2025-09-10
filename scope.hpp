@@ -109,8 +109,6 @@ namespace svh {
 			const std::size_t member_offset = get_member_offset<member>();
 			const auto key = std::make_pair(type_key, member_offset);
 
-			printf("Pushing member of type %s at offset %zu\n", type_key.name(), member_offset);
-
 			// Check if already exists in current scope
 			auto it = member_children.find(key);
 			if (it != member_children.end()) {
@@ -317,15 +315,13 @@ namespace svh {
 			const char* member_addr = reinterpret_cast<const char*>(&member);
 
 			// Validate that member is within instance bounds
-			if (member_addr < instance_addr ||
-				member_addr >= instance_addr + sizeof(T)) {
+			if (member_addr < instance_addr || member_addr >= instance_addr + sizeof(T)) {
 				throw std::runtime_error("Member is not within instance bounds");
 			}
 
 			const std::size_t member_offset = static_cast<std::size_t>(member_addr - instance_addr);
 			const std::type_index type_key = std::type_index{ typeid(T) };
 			const auto key = std::make_pair(type_key, member_offset);
-			printf("Looking for member of type %s at offset %zu\n", type_key.name(), member_offset);
 
 			/* Check member map */
 			auto it = member_children.find(key);
@@ -521,3 +517,7 @@ struct type_settings : svh::scope {};
 #define ________
 #define ____________
 #define ________________
+#define ____________________
+#define ________________________
+#define ____________________________
+#define ________________________________
