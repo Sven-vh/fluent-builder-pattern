@@ -147,7 +147,7 @@ namespace svh {
 		/// <returns>Reference to the parent scope</returns>
 		/// <exception cref="std::runtime_error">If at root</exception>
 		scope& pop(int count = 1) const {
-			if (!has_parent() && count == 1) {
+			if (!has_parent() && count > 0) {
 				throw std::runtime_error("No parent to pop to");
 			}
 			if (count == 1) {
