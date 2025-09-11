@@ -275,7 +275,12 @@ TEST(Default, multi_get) {
 
 TEST(Default, get_nonexistent) {
 	svh::scope root;
-	EXPECT_THROW(root.get<MyStruct>().get<int>(), std::runtime_error);
+	if (SVH_AUTO_INSERT) {
+		auto& mystruct_settings = root.get<MyStruct>();
+		EXPECT_TRUE(&mystruct_settings != nullptr);
+	} else {
+		EXPECT_THROW(root.get<MyStruct>(), std::runtime_error);
+	}
 }
 
 /* Member variables tests*/
@@ -369,4 +374,50 @@ TEST(Default, member_variable_func) {
 		.pop();
 	TestStruct instance{ 1, 2 };
 	do_something(root, instance, instance.a);
+}
+
+TEST(Default, member_push) {
+	svh::scope root;
+	root.push<TestStruct>()
+		____.push_member<&TestStruct::a>()
+		________.min(0)
+		________.max(10)
+		________.push<int>()
+		____________.min(-5)
+		________.pop()
+		____.pop()
+		.pop();
+
+	TestStruct instance{ 1, 2 };
+
+	auto& a_settings = root.get<TestStruct>().get_member(instance, instance.a);
+	EXPECT_EQ(a_settings.get_min(), 0);
+	EXPECT_EQ(a_settings.get_max(), 10);
+
+	auto& other = root.get<TestStruct>().get_member(instance, instance.a).get<int>();
+	/* Should fallback to member A settings */
+	EXPECT_EQ(other.get_min(), -5);
+	EXPECT_EQ(other.get_max(), 10);
+}
+
+TEST(Default, test_app) {
+	auto root = svh::scope();
+	root.push_member<&TestStruct::a>()
+		____.min(0)
+		____.max(50)
+		.pop()
+		.push_member<&TestStruct::b>()
+		____.min(100)
+		____.max(200)
+		.pop();
+
+	auto& member_a_settings = root.get_member<&TestStruct::a>();
+	auto& int_settings = member_a_settings.get<int>();
+	EXPECT_EQ(int_settings.get_min(), 0);
+	EXPECT_EQ(int_settings.get_max(), 50);
+
+	auto& member_b_settings = root.get_member<&TestStruct::b>();
+	auto& int_settings_b = member_b_settings.get<int>();
+	EXPECT_EQ(int_settings_b.get_min(), 100);
+	EXPECT_EQ(int_settings_b.get_max(), 200);
 }
