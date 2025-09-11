@@ -418,7 +418,7 @@ namespace svh {
 				std::cout << prefix << name << "\n";
 				child->debug_log(indent + 2);
 			}
-			for (const auto item : member_children) {
+			for (const auto& item : member_children) {
 				const auto& key = item.first;
 				const auto& child = item.second;
 				const auto& type_name = key.first.name();
