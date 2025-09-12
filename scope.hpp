@@ -39,7 +39,9 @@ struct type_settings;
 namespace svh {
 
 	struct scope {
+	private:
 		struct member_id; // Forward declare
+	public:
 
 		virtual ~scope() = default; // Needed for dynamic_cast
 		scope() = default;
@@ -469,10 +471,10 @@ namespace svh {
 		struct member_id {
 			std::type_index struct_type = typeid(void);
 			std::type_index member_type = typeid(void);
-			std::size_t offset = -1u;
+			std::size_t offset = std::numeric_limits<std::size_t>::max();
 
 			bool is_valid() const {
-				return struct_type != typeid(void) && member_type != typeid(void) && offset != static_cast<std::size_t>(-1);
+				return struct_type != typeid(void) && member_type != typeid(void) && offset != std::numeric_limits<std::size_t>::max();
 			}
 
 			bool operator==(const member_id& other) const {
