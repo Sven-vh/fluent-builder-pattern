@@ -1,9 +1,12 @@
 #include "pch.h"
 
+template<class T, class Enable = void>
+struct type_settings : svh::scope<type_settings> {};
+
 struct MyStruct {};
 
 template<>
-struct type_settings<int> : svh::scope {
+struct type_settings<int> : svh::scope<type_settings> {
 	int _min = std::numeric_limits<int>::min();
 	int _max = std::numeric_limits<int>::max();
 
@@ -15,7 +18,7 @@ struct type_settings<int> : svh::scope {
 };
 
 template<>
-struct type_settings<float> : svh::scope {
+struct type_settings<float> : svh::scope<type_settings> {
 	float _min = std::numeric_limits<float>::min();
 	float _max = std::numeric_limits<float>::max();
 	type_settings& min(const float& v) { _min = v; return *this; }
@@ -26,7 +29,7 @@ struct type_settings<float> : svh::scope {
 };
 
 TEST(Default, push_single) {
-	svh::scope root;
+	svh::scope<type_settings> root;
 	root.push<int>()
 		____.min(-50)
 		____.max(50)
@@ -38,7 +41,7 @@ TEST(Default, push_single) {
 }
 
 TEST(Default, push_multiple) {
-	svh::scope root;
+	svh::scope<type_settings> root;
 	root.push<int>()
 		____.min(0)
 		____.max(50)
@@ -59,7 +62,7 @@ TEST(Default, push_multiple) {
 }
 
 TEST(Default, push_nested) {
-	svh::scope root;
+	svh::scope<type_settings> root;
 	root.push<MyStruct>()
 		____.push<int>()
 		________.min(10)
@@ -74,7 +77,7 @@ TEST(Default, push_nested) {
 }
 
 TEST(Default, push_and_set) {
-	svh::scope root;
+	svh::scope<type_settings> root;
 	root.push<int>()
 		____.min(-50)
 		____.max(50)
@@ -94,7 +97,7 @@ TEST(Default, push_and_set) {
 }
 
 TEST(Default, default_fallback) {
-	svh::scope root;
+	svh::scope<type_settings> root;
 
 	if (SVH_AUTO_INSERT) {
 		auto& int_settings = root.get<int>();
@@ -110,7 +113,7 @@ TEST(Default, default_fallback) {
 }
 
 TEST(Default, recusrive_fallback) {
-	svh::scope root;
+	svh::scope<type_settings> root;
 	root.push<int>()
 		____.min(0)
 		____.max(50)
@@ -132,7 +135,7 @@ TEST(Default, recusrive_fallback) {
 }
 
 TEST(Default, overides) {
-	svh::scope root;
+	svh::scope<type_settings> root;
 	root.push<int>()
 		____.min(-50)
 		____.max(50)
@@ -154,7 +157,7 @@ TEST(Default, overides) {
 }
 
 TEST(Default, push_default) {
-	svh::scope root;
+	svh::scope<type_settings> root;
 	root.push<int>()
 		____.min(-50)
 		____.max(50)
@@ -175,14 +178,14 @@ TEST(Default, push_default) {
 }
 
 // Function parameter passing
-static void func(const svh::scope& s) {
+static void func(const svh::scope<type_settings>& s) {
 	auto& int_settings = s.get<int>();
 	EXPECT_EQ(int_settings.get_min(), -50);
 	EXPECT_EQ(int_settings.get_max(), 50);
 }
 
 TEST(Default, func_param) {
-	svh::scope root;
+	svh::scope<type_settings> root;
 	root.push<int>()
 		____.min(-50)
 		____.max(50)
@@ -191,7 +194,7 @@ TEST(Default, func_param) {
 }
 
 TEST(Default, typed_func_param) {
-	svh::scope root;
+	svh::scope<type_settings> root;
 	root.push<MyStruct>()
 		____.push<int>()
 		________.min(-50)
@@ -203,7 +206,7 @@ TEST(Default, typed_func_param) {
 }
 
 TEST(Default, multi_push) {
-	svh::scope root;
+	svh::scope<type_settings> root;
 	root.push<MyStruct, int>()
 		____.min(-50)
 		____.max(50)
@@ -216,7 +219,7 @@ TEST(Default, multi_push) {
 }
 
 TEST(Default, multi_pop) {
-	svh::scope root_a;
+	svh::scope<type_settings> root_a;
 	root_a.push<MyStruct, float, bool, int>()
 		____.min(-50)
 		____.max(50)
@@ -228,7 +231,7 @@ TEST(Default, multi_pop) {
 
 	/* Is same as */
 
-	svh::scope root_b;
+	svh::scope<type_settings> root_b;
 	root_b.push<MyStruct>()
 		____.push<float>()
 		________.push<bool>()
@@ -257,7 +260,7 @@ TEST(Default, multi_pop) {
 }
 
 TEST(Default, multi_get) {
-	svh::scope root;
+	svh::scope<type_settings> root;
 	root.push<MyStruct, bool, float, int>()
 		________.min(-50)
 		________.max(50)
@@ -274,7 +277,7 @@ TEST(Default, multi_get) {
 }
 
 TEST(Default, get_nonexistent) {
-	svh::scope root;
+	svh::scope<type_settings> root;
 	if (SVH_AUTO_INSERT) {
 		auto& mystruct_settings = root.get<MyStruct>();
 		EXPECT_TRUE(&mystruct_settings != nullptr);
@@ -290,7 +293,7 @@ struct TestStruct {
 };
 
 TEST(Default, member_variable) {
-	svh::scope root;
+	svh::scope<type_settings> root;
 	root.push<TestStruct>()
 		____.push_member<&TestStruct::a>()
 		________.min(0)
@@ -312,7 +315,7 @@ TEST(Default, member_variable) {
 }
 
 TEST(Default, member_variable_runtime) {
-	svh::scope root;
+	svh::scope<type_settings> root;
 	root.push<TestStruct>()
 		____.push_member<&TestStruct::a>()
 		________.min(0)
@@ -336,7 +339,7 @@ TEST(Default, member_variable_runtime) {
 }
 
 TEST(Default, member_fallback) {
-	svh::scope root;
+	svh::scope<type_settings> root;
 	root.push<TestStruct>()
 		____.push<int>()
 		________.min(0)
@@ -358,14 +361,14 @@ TEST(Default, member_fallback) {
 }
 
 template<class T, class M>
-void do_something(const svh::scope& s, const T& instance, const M& member) {
+void do_something(const svh::scope<type_settings>& s, const T& instance, const M& member) {
 	auto& settings = s.get<TestStruct>().get_member(instance, member);
 	EXPECT_EQ(settings.get_min(), 0);
 	EXPECT_EQ(settings.get_max(), 10);
 }
 
 TEST(Default, member_variable_func) {
-	svh::scope root;
+	svh::scope<type_settings> root;
 	root.push<TestStruct>()
 		____.push_member<&TestStruct::a>()
 		________.min(0)
@@ -377,7 +380,7 @@ TEST(Default, member_variable_func) {
 }
 
 TEST(Default, member_push) {
-	svh::scope root;
+	svh::scope<type_settings> root;
 	root.push<TestStruct>()
 		____.push_member<&TestStruct::a>()
 		________.min(0)
@@ -401,7 +404,7 @@ TEST(Default, member_push) {
 }
 
 TEST(Default, test_app) {
-	auto root = svh::scope();
+	auto root = svh::scope<type_settings>();
 	root.push_member<&TestStruct::a>()
 		____.min(0)
 		____.max(50)
@@ -420,4 +423,37 @@ TEST(Default, test_app) {
 	auto& int_settings_b = member_b_settings.get<int>();
 	EXPECT_EQ(int_settings_b.get_min(), 100);
 	EXPECT_EQ(int_settings_b.get_max(), 200);
+}
+
+/* Other generic builders */
+template<class T, class Enable = void>
+struct other_settings : svh::scope<other_settings> {};
+
+/*other_settings for int*/
+template<>
+struct other_settings<int> : svh::scope<other_settings> {
+	int _value = 0;
+	other_settings& value(const int& v) { _value = v; return *this; }
+	const int& get_value() const { return _value; }
+};
+
+TEST(Default, other_settings) {
+	svh::scope<type_settings> root;
+	root.push<int>()
+		____.min(-50)
+		____.max(50)
+		.pop();
+
+	auto& int_settings = root.get<int>();
+	
+	EXPECT_EQ(int_settings.get_min(), -50);
+	EXPECT_EQ(int_settings.get_max(), 50);
+	
+	auto other_root = svh::scope<other_settings>();
+	other_root.push<int>()
+		____.value(123)
+		.pop();
+	
+	auto& other_int_settings = other_root.get<int>();
+	EXPECT_EQ(other_int_settings.get_value(), 123);
 }
