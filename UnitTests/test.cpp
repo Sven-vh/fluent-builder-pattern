@@ -61,6 +61,24 @@ TEST(Default, push_multiple) {
 	EXPECT_EQ(float_settings.get_max(), 1.0f);
 }
 
+TEST(Default, pop_to_root) {
+	svh::scope<type_settings> root;
+	root.push<int>()
+		____.push<bool>()
+		________.push<float>()
+		____________.min(-1.0f)
+		____________.max(1.0f)
+		.pop_to_root()
+		.push<float>()
+		____.min(-50.0f)
+		____.max(50.0f)
+		.pop();
+
+	auto& float_settings = root.get<float>();
+	EXPECT_EQ(float_settings.get_min(), -50.0f);
+	EXPECT_EQ(float_settings.get_max(), 50.0f);
+}
+
 TEST(Default, push_nested) {
 	svh::scope<type_settings> root;
 	root.push<MyStruct>()

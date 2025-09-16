@@ -164,6 +164,13 @@ namespace svh {
 			return parent->pop(--count);
 		}
 
+		scope& pop_to_root() {
+			if (is_root()) {
+				return *this;
+			}
+			return parent->pop_to_root();
+		}
+
 		/// <summary>
 		/// Get the scope for type T. If not found, recurse to parent.
 		/// If not found and at root, optionally insert a default one depending on ``SVH_AUTO_INSERT``.
@@ -510,7 +517,7 @@ namespace svh {
 			return ref;
 		}
 
-		/* Actual implementation fo push */
+		/* Actual implementation to push */
 		template<class T>
 		BaseTemplate<T>& _push() {
 			const std::type_index key = get_type_key<T>();
