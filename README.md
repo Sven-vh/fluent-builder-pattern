@@ -39,8 +39,8 @@ svh::scope root;
 
 // Push into an int scope, configure it, then pop back
 root.push<int>()           // Enter int configuration scope
-    ____.min(-50)          // Set minimum value
-    ____.max(50)           // Set maximum value
+    	.min(-50)          // Set minimum value
+    	.max(50)           // Set maximum value
     .pop();                // Return to root scope
 
 // Retrieve configured settings
@@ -60,12 +60,12 @@ int max_value = root.get<int>().get_max(); // 50
 svh::scope root;
 
 root.push<int>()
-    ____.min(0)
-    ____.max(100)
+    	.min(0)
+    	.max(100)
     .pop()                 // Back to root
     .push<float>()         // Now configure float
-    ____.min(-1.0f)
-    ____.max(1.0f)
+    	.min(-1.0f)
+    	.max(1.0f)
     .pop();                // Back to root
 
 auto& int_settings = root.get<int>();
@@ -81,14 +81,14 @@ svh::scope root;
 
 // Configure root-level int settings
 root.push<int>()
-    ____.min(-100)
-    ____.max(100)
+    	.min(-100)
+    	.max(100)
     .pop()                     // Back to root
     // Create a MyStruct scope with its own int settings
     .push<MyStruct>()
-    ____.push<int>()           // This inherits min=-100, max=100 from root
-    ________.max(20)           // Override only the max value
-    ____.pop()                 // Back to MyStruct scope
+    	.push<int>()           // This inherits min=-100, max=100 from root
+    		.max(20)           // Override only the max value
+    	.pop()                 // Back to MyStruct scope
     .pop();                    // Back to root
 
 // Access the nested settings
@@ -105,8 +105,8 @@ svh::scope root;
 
 // Push multiple types at once: MyStruct -> bool -> float -> int
 root.push<MyStruct, bool, float, int>()
-    ________.min(-50)          // Configure the final int scope
-    ________.max(50)
+    		.min(-50)          // Configure the final int scope
+    		.max(50)
     .pop();                    // Pop back through all levels to root
 
 // Access nested settings in one call
@@ -174,13 +174,13 @@ struct type_settings<Graphics> : svh::scope {
 svh::scope game_config;
 
 game_config.push<Player>()
-    ____.set_name("Hero")
-    ____.set_level(5)
-    ____.set_health(150.0f)
+    	.set_name("Hero")
+    	.set_level(5)
+    	.set_health(150.0f)
     .pop()
     .push<Graphics>()
-    ____.resolution(2560, 1440)
-    ____.set_fullscreen(true)
+    	.resolution(2560, 1440)
+    	.set_fullscreen(true)
     .pop();
 
 // Pass configuration to different systems
@@ -250,44 +250,20 @@ void run_simulation(const svh::scope& config) {
 
 svh::scope sim_config;
 sim_config.push<PhysicsSettings>()
-    ____.set_gravity(-9.81f)
-    ____.set_timestep(0.016f)
+    	.set_gravity(-9.81f)
+    	.set_timestep(0.016f)
     .pop()
     .push<GraphicsSettings>()
-    ____.enable_shadows(true)
-    ____.set_quality("high")
+    	.enable_shadows(true)
+    	.set_quality("high")
     .pop()
     .push<AISettings>()
-    ____.set_difficulty(0.8f)
-    ____.set_update_frequency(60)
+    	.set_difficulty(0.8f)
+    	.set_update_frequency(60)
     .pop();
 
 run_simulation(sim_config);
 ```
-
-## Configuration Options
-
-The library behavior can be customized using preprocessor definitions:
-
-### SVH_AUTO_INSERT
-```cpp
-#define SVH_AUTO_INSERT true  // Default: true
-```
-
-> [!NOTE]
-> When `true`, automatically creates default settings when accessing non-existent types at the root level.
-> When `false`, throws `std::runtime_error` for missing types.
-
-### SVH_RECURSIVE_SEARCH  
-```cpp
-#define SVH_RECURSIVE_SEARCH true  // Default: true
-```
-> [!NOTE]
-> Enables automatic lookup in parent scopes when a setting is not found in the current scope.
-
-## API Reference
-
-### Core Classes
 
 #### `svh::scope`
 The main scope class that manages hierarchical settings.
@@ -318,7 +294,7 @@ struct type_settings<int> : svh::scope {
 
 ### Visual Indentation Macros
 
-The library provides macros for visual clarity in nested configurations. These are completely optional but help make code more readable:
+The library provides macros for visual clarity in nested configurations. These are completely optional but help make code more readable. It also helps with formatters that apply automatically and remove indentation. 
 
 ```cpp
 // Without indentation macros:
