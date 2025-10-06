@@ -40,6 +40,18 @@ TEST(Default, push_single) {
 	EXPECT_EQ(int_settings.get_max(), 50);
 }
 
+TEST(Default, push_single_const) {
+	svh::scope<type_settings> root;
+	root.push<const int>()
+		____.min(-50)
+		____.max(50)
+		.pop();
+
+	auto& int_settings = root.get<const int>();
+	EXPECT_EQ(int_settings.get_min(), -50);
+	EXPECT_EQ(int_settings.get_max(), 50);
+}
+
 TEST(Default, push_multiple) {
 	svh::scope<type_settings> root;
 	root.push<int>()
