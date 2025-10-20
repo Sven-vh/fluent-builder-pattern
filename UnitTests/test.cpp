@@ -73,6 +73,47 @@ TEST(Default, push_multiple) {
 	EXPECT_EQ(float_settings.get_max(), 1.0f);
 }
 
+TEST(Default, push_container) {
+	svh::scope<type_settings> root;
+	root.push<std::vector>()
+		____.push<int>()
+		________.min(0)
+		________.max(50)
+		____.pop()
+		.pop();
+
+	auto& int_settings = root.get<std::vector>().get<int>();
+	EXPECT_EQ(int_settings.get_min(), 0);
+	EXPECT_EQ(int_settings.get_max(), 50);
+}
+
+
+struct list_type {};
+
+template<>
+struct svh::category_template<std::list> {
+	using type = list_type;
+};
+
+static_assert(std::is_same_v<svh::simplify_template_t<std::list>, list_type>);
+
+/* When pushing std::list it will use list_type instead of default */
+TEST(Default, type_trait_push_container) {
+	svh::scope<type_settings> root;
+	root.push<std::list>()
+		____.push<int>()
+		________.min(0)
+		________.max(50)
+		____.pop()
+		.pop();
+
+	root.debug_log();
+
+	auto& int_settings = root.get<std::list>().get<int>();
+	EXPECT_EQ(int_settings.get_min(), 0);
+	EXPECT_EQ(int_settings.get_max(), 50);
+}
+
 TEST(Default, pop_to_root) {
 	svh::scope<type_settings> root;
 	root.push<int>()
@@ -475,15 +516,15 @@ TEST(Default, other_settings) {
 		.pop();
 
 	auto& int_settings = root.get<int>();
-	
+
 	EXPECT_EQ(int_settings.get_min(), -50);
 	EXPECT_EQ(int_settings.get_max(), 50);
-	
+
 	auto other_root = svh::scope<other_settings>();
 	other_root.push<int>()
 		____.value(123)
 		.pop();
-	
+
 	auto& other_int_settings = other_root.get<int>();
 	EXPECT_EQ(other_int_settings.get_value(), 123);
 }
